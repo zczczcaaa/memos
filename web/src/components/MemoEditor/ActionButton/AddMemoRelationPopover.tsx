@@ -1,4 +1,5 @@
-import { Autocomplete, AutocompleteOption, Button, Checkbox, Chip, IconButton } from "@mui/joy";
+import { Autocomplete, AutocompleteOption, Chip } from "@mui/joy";
+import { Button, Checkbox } from "@usememos/mui";
 import { uniqBy } from "lodash-es";
 import { LinkIcon } from "lucide-react";
 import React, { useContext, useState } from "react";
@@ -8,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/Popover
 import { memoServiceClient } from "@/grpcweb";
 import { DEFAULT_LIST_MEMOS_PAGE_SIZE } from "@/helpers/consts";
 import useCurrentUser from "@/hooks/useCurrentUser";
-import { MemoRelation_Type } from "@/types/proto/api/v1/memo_relation_service";
+import { MemoRelation_Memo, MemoRelation_Type } from "@/types/proto/api/v1/memo_relation_service";
 import { Memo, MemoView } from "@/types/proto/api/v1/memo_service";
 import { useTranslate } from "@/utils/i18n";
 import { EditorRefActions } from "../Editor";
@@ -27,14 +28,14 @@ const AddMemoRelationPopover = (props: Props) => {
   const [isFetching, setIsFetching] = useState<boolean>(true);
   const [fetchedMemos, setFetchedMemos] = useState<Memo[]>([]);
   const [selectedMemos, setSelectedMemos] = useState<Memo[]>([]);
-  const [embedded, setEmbedded] = useState<boolean>(true);
+  const [embedded, setEmbedded] = useState<boolean>(false);
   const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
 
   const filteredMemos = fetchedMemos.filter(
     (memo) =>
       !selectedMemos.includes(memo) &&
       memo.name !== context.memoName &&
-      !context.relationList.some((relation) => relation.relatedMemo === memo.name),
+      !context.relationList.some((relation) => relation.relatedMemo?.name === memo.name),
   );
 
   useDebounce(
@@ -43,7 +44,7 @@ const AddMemoRelationPopover = (props: Props) => {
 
       setIsFetching(true);
       try {
-        const filters = [`creator == "${user.name}"`, `row_status == "NORMAL"`];
+        const filters = [`creator == "${user.name}"`, `state == "NORMAL"`];
         if (searchText) {
           filters.push(`content_search == [${JSON.stringify(searchText)}]`);
         }
@@ -91,7 +92,7 @@ const AddMemoRelationPopover = (props: Props) => {
     // If embedded mode is enabled, embed the memo instead of creating a relation.
     if (embedded) {
       if (!editorRef.current) {
-        toast.error("Failed to embed memo");
+        toast.error(t("message.failed-to-embed-memo"));
         return;
       }
 
@@ -112,8 +113,8 @@ const AddMemoRelationPopover = (props: Props) => {
         uniqBy(
           [
             ...selectedMemos.map((memo) => ({
-              memo: context.memoName || "",
-              relatedMemo: memo.name,
+              memo: MemoRelation_Memo.fromPartial({ name: memo.name }),
+              relatedMemo: MemoRelation_Memo.fromPartial({ name: memo.name }),
               type: MemoRelation_Type.REFERENCE,
             })),
             ...context.relationList,
@@ -128,10 +129,10 @@ const AddMemoRelationPopover = (props: Props) => {
 
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-      <PopoverTrigger>
-        <IconButton size="sm" component="div">
-          <LinkIcon className="w-5 h-5 mx-auto" />
-        </IconButton>
+      <PopoverTrigger className="w-9 relative">
+        <Button className="flex items-center justify-center" size="sm" variant="plain" asChild>
+          <LinkIcon className="w-5 h-5 mx-auto p-0" />
+        </Button>
       </PopoverTrigger>
       <PopoverContent align="center">
         <div className="w-[16rem] flex flex-col justify-start items-start">
@@ -173,7 +174,7 @@ const AddMemoRelationPopover = (props: Props) => {
           />
           <div className="mt-2 w-full flex flex-row justify-end items-center gap-2">
             <Checkbox size="sm" label={"Embed"} checked={embedded} onChange={(e) => setEmbedded(e.target.checked)} />
-            <Button size="sm" onClick={addMemoRelations} disabled={selectedMemos.length === 0}>
+            <Button size="sm" color="primary" onClick={addMemoRelations} disabled={selectedMemos.length === 0}>
               {t("common.add")}
             </Button>
           </div>

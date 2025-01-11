@@ -1,4 +1,4 @@
-import { Button, IconButton, Input } from "@mui/joy";
+import { Button, Input } from "@usememos/mui";
 import { LatLng } from "leaflet";
 import { MapPinIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -93,38 +93,40 @@ const LocationSelector = (props: Props) => {
 
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-      <PopoverTrigger>
-        <IconButton className="group" size="sm" component="div">
+      <PopoverTrigger asChild>
+        <Button className="flex items-center justify-center" size="sm" variant="plain">
           <MapPinIcon className="w-5 h-5 mx-auto shrink-0" />
           {props.location && (
             <>
-              <span className="font-normal ml-0.5 text-ellipsis whitespace-nowrap overflow-hidden max-w-32">
-                {props.location.placeholder}
-              </span>
+              <span className="ml-0.5 text-sm text-ellipsis whitespace-nowrap overflow-hidden max-w-32">{props.location.placeholder}</span>
               <XIcon className="w-5 h-5 mx-auto shrink-0 hidden group-hover:block opacity-60 hover:opacity-80" onClick={removeLocation} />
             </>
           )}
-        </IconButton>
+        </Button>
       </PopoverTrigger>
       <PopoverContent align="center">
         <div className="min-w-80 sm:w-128 flex flex-col justify-start items-start">
           <LeafletMap key={JSON.stringify(state.initilized)} latlng={state.position} onChange={onPositionChanged} />
           <div className="mt-2 w-full flex flex-row justify-between items-center gap-2">
-            <Input
-              placeholder="Choose a position first."
-              value={state.placeholder}
-              disabled={!state.position}
-              startDecorator={
-                state.position ? (
-                  <span>
-                    [{state.position.lat.toFixed(3)}, {state.position.lng.toFixed(3)}]
-                  </span>
-                ) : null
-              }
-              onChange={(e) => setState((state) => ({ ...state, placeholder: e.target.value }))}
-            />
+            <div className="flex flex-row items-center justify-start gap-2">
+              <Input
+                placeholder="Choose a position first."
+                value={state.placeholder}
+                size="sm"
+                startDecorator={
+                  state.position && (
+                    <span className="text-xs opacity-60">
+                      [{state.position.lat.toFixed(2)}, {state.position.lng.toFixed(2)}]
+                    </span>
+                  )
+                }
+                disabled={!state.position}
+                onChange={(e) => setState((state) => ({ ...state, placeholder: e.target.value }))}
+              />
+            </div>
             <Button
               className="shrink-0"
+              color="primary"
               size="sm"
               onClick={() => {
                 props.onChange(

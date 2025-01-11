@@ -1,4 +1,4 @@
-import { Button } from "@mui/joy";
+import { Button } from "@usememos/mui";
 import copy from "copy-to-clipboard";
 import dayjs from "dayjs";
 import { ExternalLinkIcon } from "lucide-react";
@@ -12,7 +12,7 @@ import PagedMemoList from "@/components/PagedMemoList";
 import UserAvatar from "@/components/UserAvatar";
 import useLoading from "@/hooks/useLoading";
 import { useMemoFilterStore, useUserStore } from "@/store/v1";
-import { RowStatus } from "@/types/proto/api/v1/common";
+import { State } from "@/types/proto/api/v1/common";
 import { Memo } from "@/types/proto/api/v1/memo_service";
 import { User } from "@/types/proto/api/v1/user_service";
 import { useTranslate } from "@/utils/i18n";
@@ -52,7 +52,7 @@ const UserProfile = () => {
       return "";
     }
 
-    const filters = [`creator == "${user.name}"`, `row_status == "NORMAL"`, `order_by_pinned == true`];
+    const filters = [`creator == "${user.name}"`, `state == "NORMAL"`, `order_by_pinned == true`];
     const contentSearch: string[] = [];
     const tagSearch: string[] = [];
     for (const filter of memoFilterStore.filters) {
@@ -88,22 +88,18 @@ const UserProfile = () => {
           (user ? (
             <>
               <div className="my-4 w-full flex justify-end items-center gap-2">
-                <Button
-                  color="neutral"
-                  variant="outlined"
-                  endDecorator={<ExternalLinkIcon className="w-4 h-auto opacity-60" />}
-                  onClick={handleCopyProfileLink}
-                >
+                <Button variant="outlined" onClick={handleCopyProfileLink}>
                   {t("common.share")}
+                  <ExternalLinkIcon className="ml-1 w-4 h-auto opacity-60" />
                 </Button>
               </div>
               <div className="w-full flex flex-col justify-start items-start pt-4 pb-8 px-3">
                 <UserAvatar className="!w-16 !h-16 drop-shadow rounded-3xl" avatarUrl={user?.avatarUrl} />
                 <div className="mt-2 w-auto max-w-[calc(100%-6rem)] flex flex-col justify-center items-start">
-                  <p className="w-full text-3xl text-black leading-tight opacity-80 dark:text-gray-200 truncate">
+                  <p className="w-full text-3xl text-black leading-tight font-medium opacity-80 dark:text-gray-200 truncate">
                     {user.nickname || user.username}
                   </p>
-                  <p className="w-full text-gray-500 leading-snug opacity-80 dark:text-gray-400 whitespace-pre-wrap truncate line-clamp-6">
+                  <p className="w-full text-gray-500 leading-snug dark:text-gray-400 whitespace-pre-wrap truncate line-clamp-6">
                     {user.description}
                   </p>
                 </div>
@@ -115,7 +111,7 @@ const UserProfile = () => {
                 )}
                 listSort={(memos: Memo[]) =>
                   memos
-                    .filter((memo) => memo.rowStatus === RowStatus.ACTIVE)
+                    .filter((memo) => memo.state === State.NORMAL)
                     .sort((a, b) =>
                       memoFilterStore.orderByTimeAsc
                         ? dayjs(a.displayTime).unix() - dayjs(b.displayTime).unix()

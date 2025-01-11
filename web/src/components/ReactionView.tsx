@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { memoServiceClient } from "@/grpcweb";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useMemoStore } from "@/store/v1";
+import { State } from "@/types/proto/api/v1/common";
 import { Memo } from "@/types/proto/api/v1/memo_service";
 import { User } from "@/types/proto/api/v1/user_service";
 
@@ -32,9 +33,10 @@ const ReactionView = (props: Props) => {
   const currentUser = useCurrentUser();
   const memoStore = useMemoStore();
   const hasReaction = users.some((user) => currentUser && user.username === currentUser.username);
+  const readonly = memo.state === State.ARCHIVED;
 
   const handleReactionClick = async () => {
-    if (!currentUser) {
+    if (!currentUser || readonly) {
       return;
     }
 
@@ -66,14 +68,15 @@ const ReactionView = (props: Props) => {
     <Tooltip title={stringifyUsers(users, reactionType)} placement="top">
       <div
         className={clsx(
-          "h-7 border px-2 py-0.5 rounded-full font-memo flex flex-row justify-center items-center gap-1 dark:border-zinc-700",
-          currentUser && "cursor-pointer",
+          "h-7 border px-2 py-0.5 rounded-full flex flex-row justify-center items-center gap-1 dark:border-zinc-700",
+          "text-sm text-gray-600 dark:text-gray-400",
+          currentUser && !readonly && "cursor-pointer",
           hasReaction && "bg-blue-100 border-blue-200 dark:bg-zinc-900",
         )}
         onClick={handleReactionClick}
       >
         <span>{reactionType}</span>
-        <span className="text-sm text-gray-500 dark:text-gray-400">{users.length}</span>
+        <span className="opacity-60">{users.length}</span>
       </div>
     </Tooltip>
   );

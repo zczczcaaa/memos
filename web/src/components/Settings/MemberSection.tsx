@@ -1,4 +1,5 @@
-import { Button, Dropdown, Input, Menu, MenuButton, MenuItem, Radio, RadioGroup } from "@mui/joy";
+import { Dropdown, Menu, MenuButton, MenuItem, Radio, RadioGroup } from "@mui/joy";
+import { Button, Input } from "@usememos/mui";
 import { sortBy } from "lodash-es";
 import { MoreVerticalIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
@@ -6,12 +7,12 @@ import { toast } from "react-hot-toast";
 import { userServiceClient } from "@/grpcweb";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { stringifyUserRole, useUserStore } from "@/store/v1";
-import { RowStatus } from "@/types/proto/api/v1/common";
+import { State } from "@/types/proto/api/v1/common";
 import { User, User_Role } from "@/types/proto/api/v1/user_service";
 import { useTranslate } from "@/utils/i18n";
 import showChangeMemberPasswordDialog from "../ChangeMemberPasswordDialog";
 
-interface State {
+interface LocalState {
   creatingUser: User;
 }
 
@@ -19,7 +20,7 @@ const MemberSection = () => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
   const userStore = useUserStore();
-  const [state, setState] = useState<State>({
+  const [state, setState] = useState<LocalState>({
     creatingUser: User.fromPartial({
       username: "",
       password: "",
@@ -106,9 +107,9 @@ const MemberSection = () => {
       await userServiceClient.updateUser({
         user: {
           name: user.name,
-          rowStatus: RowStatus.ARCHIVED,
+          state: State.ARCHIVED,
         },
-        updateMask: ["row_status"],
+        updateMask: ["state"],
       });
       fetchUsers();
     }
@@ -118,9 +119,9 @@ const MemberSection = () => {
     await userServiceClient.updateUser({
       user: {
         name: user.name,
-        rowStatus: RowStatus.ACTIVE,
+        state: State.NORMAL,
       },
-      updateMask: ["row_status"],
+      updateMask: ["state"],
     });
     fetchUsers();
   };
@@ -158,7 +159,9 @@ const MemberSection = () => {
           </RadioGroup>
         </div>
         <div className="mt-2">
-          <Button onClick={handleCreateUserBtnClick}>{t("common.create")}</Button>
+          <Button color="primary" onClick={handleCreateUserBtnClick}>
+            {t("common.create")}
+          </Button>
         </div>
       </div>
       <div className="w-full flex flex-row justify-between items-center mt-6">
@@ -170,13 +173,10 @@ const MemberSection = () => {
             <thead>
               <tr className="text-sm font-semibold text-left text-gray-900 dark:text-gray-400">
                 <th scope="col" className="px-3 py-2">
-                  ID
+                  {t("common.username")}
                 </th>
                 <th scope="col" className="px-3 py-2">
                   {t("common.role")}
-                </th>
-                <th scope="col" className="px-3 py-2">
-                  {t("common.username")}
                 </th>
                 <th scope="col" className="px-3 py-2">
                   {t("common.nickname")}
@@ -189,17 +189,16 @@ const MemberSection = () => {
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-zinc-600">
               {sortedUsers.map((user) => (
-                <tr key={user.id}>
-                  <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-900 dark:text-gray-400">{user.id}</td>
-                  <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{stringifyUserRole(user.role)}</td>
+                <tr key={user.name}>
                   <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
                     {user.username}
-                    <span className="ml-1 italic">{user.rowStatus === RowStatus.ARCHIVED && "(Archived)"}</span>
+                    <span className="ml-1 italic">{user.state === State.ARCHIVED && "(Archived)"}</span>
                   </td>
+                  <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{stringifyUserRole(user.role)}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{user.nickname}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500 dark:text-gray-400">{user.email}</td>
                   <td className="relative whitespace-nowrap py-2 pl-3 pr-4 text-right text-sm font-medium flex justify-end">
-                    {currentUser?.id === user.id ? (
+                    {currentUser?.name === user.name ? (
                       <span>{t("common.yourself")}</span>
                     ) : (
                       <Dropdown>
@@ -210,7 +209,7 @@ const MemberSection = () => {
                           <MenuItem onClick={() => handleChangePasswordClick(user)}>
                             {t("setting.account-section.change-password")}
                           </MenuItem>
-                          {user.rowStatus === RowStatus.ACTIVE ? (
+                          {user.state === State.NORMAL ? (
                             <MenuItem onClick={() => handleArchiveUserClick(user)}>{t("setting.member-section.archive-member")}</MenuItem>
                           ) : (
                             <>

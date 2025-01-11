@@ -51,13 +51,6 @@ service MemoService {
     option (google.api.http) = {delete: "/api/v1/{name=memos/*}"};
     option (google.api.method_signature) = "name";
   }
-  // RebuildMemoProperty rebuilds a memo property.
-  rpc RebuildMemoProperty(RebuildMemoPropertyRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/api/v1/{name=memos/*}/properties:rebuild"
-      body: "*"
-    };
-  }
   // RenameMemoTag renames a tag for a memo.
   rpc RenameMemoTag(RenameMemoTagRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
@@ -139,15 +132,15 @@ message Memo {
   // The name of the memo.
   // Format: memos/{id}
   // id is the system generated id.
-  string name = 1;
+  string name = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // The user defined id of the memo.
   string uid = 2;
 
-  RowStatus row_status = 3;
+  State state = 3;
 
   // The name of the creator.
-  // Format: users/{id}
+  // Format: users/{user}
   string creator = 4;
 
   google.protobuf.Timestamp create_time = 5;
@@ -162,7 +155,7 @@ message Memo {
 
   Visibility visibility = 10;
 
-  repeated string tags = 11;
+  repeated string tags = 11 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   bool pinned = 12;
 
@@ -179,18 +172,17 @@ message Memo {
   optional string parent = 18 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // The snippet of the memo content. Plain text only.
-  string snippet = 19;
+  string snippet = 19 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // The location of the memo.
   optional Location location = 20;
 }
 
 message MemoProperty {
-  repeated string tags = 1;
-  bool has_link = 2;
-  bool has_task_list = 3;
-  bool has_code = 4;
-  bool has_incomplete_tasks = 5;
+  bool has_link = 1;
+  bool has_task_list = 2;
+  bool has_code = 3;
+  bool has_incomplete_tasks = 4;
 }
 
 message Location {
@@ -230,7 +222,7 @@ message ListMemosRequest {
   string page_token = 2;
 
   // Filter is used to filter memos returned in the list.
-  // Format: "creator == 'users/{uid}' && visibilities == ['PUBLIC', 'PROTECTED']"
+  // Format: "creator == 'users/{user}' && visibilities == ['PUBLIC', 'PROTECTED']"
   string filter = 3;
 
   // The view of the memo.
@@ -265,12 +257,6 @@ message UpdateMemoRequest {
 message DeleteMemoRequest {
   // The name of the memo.
   // Format: memos/{id}
-  string name = 1;
-}
-
-message RebuildMemoPropertyRequest {
-  // The name of the memo.
-  // Format: memos/{id}. Use "memos/-" to rebuild all memos.
   string name = 1;
 }
 

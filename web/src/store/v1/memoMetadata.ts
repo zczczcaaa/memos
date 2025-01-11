@@ -27,7 +27,7 @@ export const useMemoMetadataStore = create(
     setState: (state: State) => set(state),
     getState: () => get(),
     fetchMemoMetadata: async (params: { user?: User; location?: Location<any> }) => {
-      const filters = [`row_status == "NORMAL"`];
+      const filters = [`state == "NORMAL"`];
       if (params.user) {
         if (params.location?.pathname === Routes.EXPLORE) {
           filters.push(`visibilities == ["PUBLIC", "PROTECTED"]`);
@@ -41,10 +41,13 @@ export const useMemoMetadataStore = create(
         view: MemoView.MEMO_VIEW_METADATA_ONLY,
         pageSize: DEFAULT_MEMO_PAGE_SIZE,
       });
-      const memoMap = { ...get().dataMapByName };
-      for (const memo of memos) {
-        memoMap[memo.name] = memo;
-      }
+      const memoMap = memos.reduce<Record<string, Memo>>(
+        (acc, memo) => ({
+          ...acc,
+          [memo.name]: memo,
+        }),
+        {},
+      );
       set({ stateId: uniqueId(), dataMapByName: memoMap });
       return { memos, nextPageToken };
     },
@@ -53,15 +56,20 @@ export const useMemoMetadataStore = create(
 
 export const useMemoTagList = () => {
   const memoStore = useMemoMetadataStore();
-  const data = Object.values(memoStore.getState().dataMapByName);
+  const memos = Object.values(memoStore.getState().dataMapByName);
   const tagAmounts: Record<string, number> = {};
-  data.forEach((memo) => {
-    memo.property?.tags.forEach((tag) => {
-      if (tagAmounts[tag]) {
-        tagAmounts[tag] += 1;
-      } else {
-        tagAmounts[tag] = 1;
+  memos.forEach((memo) => {
+    const tagSet = new Set<string>();
+    for (const tag of memo.tags) {
+      const parts = tag.split("/");
+      let currentTag = "";
+      for (const part of parts) {
+        currentTag = currentTag ? `${currentTag}/${part}` : part;
+        tagSet.add(currentTag);
       }
+    }
+    Array.from(tagSet).forEach((tag) => {
+      tagAmounts[tag] = tagAmounts[tag] ? tagAmounts[tag] + 1 : 1;
     });
   });
   return tagAmounts;
