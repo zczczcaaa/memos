@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -13,14 +14,18 @@ import (
 )
 
 func (s *APIV1Service) SetMemoRelations(ctx context.Context, request *v1pb.SetMemoRelationsRequest) (*emptypb.Empty, error) {
-	id, err := ExtractMemoIDFromName(request.Name)
+	memoUID, err := ExtractMemoUIDFromName(request.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid memo name: %v", err)
+	}
+	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{UID: &memoUID})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get memo")
 	}
 	referenceType := store.MemoRelationReference
 	// Delete all reference relations first.
 	if err := s.Store.DeleteMemoRelation(ctx, &store.DeleteMemoRelation{
-		MemoID: &id,
+		MemoID: &memo.ID,
 		Type:   &referenceType,
 	}); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete memo relation")
@@ -28,7 +33,7 @@ func (s *APIV1Service) SetMemoRelations(ctx context.Context, request *v1pb.SetMe
 
 	for _, relation := range request.Relations {
 		// Ignore reflexive relations.
-		if request.Name == relation.RelatedMemo {
+		if request.Name == relation.RelatedMemo.Name {
 			continue
 		}
 		// Ignore comment relations as there's no need to update a comment's relation.
@@ -36,13 +41,17 @@ func (s *APIV1Service) SetMemoRelations(ctx context.Context, request *v1pb.SetMe
 		if relation.Type == v1pb.MemoRelation_COMMENT {
 			continue
 		}
-		relatedMemoID, err := ExtractMemoIDFromName(relation.RelatedMemo)
+		relatedMemoUID, err := ExtractMemoUIDFromName(relation.RelatedMemo.Name)
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "invalid related memo name: %v", err)
 		}
+		relatedMemo, err := s.Store.GetMemo(ctx, &store.FindMemo{UID: &relatedMemoUID})
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get related memo")
+		}
 		if _, err := s.Store.UpsertMemoRelation(ctx, &store.MemoRelation{
-			MemoID:        id,
-			RelatedMemoID: relatedMemoID,
+			MemoID:        memo.ID,
+			RelatedMemoID: relatedMemo.ID,
 			Type:          convertMemoRelationTypeToStore(relation.Type),
 		}); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to upsert memo relation")
@@ -53,28 +62,40 @@ func (s *APIV1Service) SetMemoRelations(ctx context.Context, request *v1pb.SetMe
 }
 
 func (s *APIV1Service) ListMemoRelations(ctx context.Context, request *v1pb.ListMemoRelationsRequest) (*v1pb.ListMemoRelationsResponse, error) {
-	id, err := ExtractMemoIDFromName(request.Name)
+	memoUID, err := ExtractMemoUIDFromName(request.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid memo name: %v", err)
 	}
+	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{UID: &memoUID})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get memo")
+	}
 	relationList := []*v1pb.MemoRelation{}
 	tempList, err := s.Store.ListMemoRelations(ctx, &store.FindMemoRelation{
-		MemoID: &id,
+		MemoID: &memo.ID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	for _, relation := range tempList {
-		relationList = append(relationList, convertMemoRelationFromStore(relation))
+	for _, raw := range tempList {
+		relation, err := s.convertMemoRelationFromStore(ctx, raw)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to convert memo relation")
+		}
+		relationList = append(relationList, relation)
 	}
 	tempList, err = s.Store.ListMemoRelations(ctx, &store.FindMemoRelation{
-		RelatedMemoID: &id,
+		RelatedMemoID: &memo.ID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	for _, relation := range tempList {
-		relationList = append(relationList, convertMemoRelationFromStore(relation))
+	for _, raw := range tempList {
+		relation, err := s.convertMemoRelationFromStore(ctx, raw)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to convert memo relation")
+		}
+		relationList = append(relationList, relation)
 	}
 
 	response := &v1pb.ListMemoRelationsResponse{
@@ -83,12 +104,36 @@ func (s *APIV1Service) ListMemoRelations(ctx context.Context, request *v1pb.List
 	return response, nil
 }
 
-func convertMemoRelationFromStore(memoRelation *store.MemoRelation) *v1pb.MemoRelation {
-	return &v1pb.MemoRelation{
-		Memo:        fmt.Sprintf("%s%d", MemoNamePrefix, memoRelation.MemoID),
-		RelatedMemo: fmt.Sprintf("%s%d", MemoNamePrefix, memoRelation.RelatedMemoID),
-		Type:        convertMemoRelationTypeFromStore(memoRelation.Type),
+func (s *APIV1Service) convertMemoRelationFromStore(ctx context.Context, memoRelation *store.MemoRelation) (*v1pb.MemoRelation, error) {
+	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &memoRelation.MemoID})
+	if err != nil {
+		return nil, err
 	}
+	memoSnippet, err := getMemoContentSnippet(memo.Content)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get memo content snippet")
+	}
+	relatedMemo, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &memoRelation.RelatedMemoID})
+	if err != nil {
+		return nil, err
+	}
+	relatedMemoSnippet, err := getMemoContentSnippet(relatedMemo.Content)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get related memo content snippet")
+	}
+	return &v1pb.MemoRelation{
+		Memo: &v1pb.MemoRelation_Memo{
+			Name:    fmt.Sprintf("%s%s", MemoNamePrefix, memo.UID),
+			Uid:     memo.UID,
+			Snippet: memoSnippet,
+		},
+		RelatedMemo: &v1pb.MemoRelation_Memo{
+			Name:    fmt.Sprintf("%s%s", MemoNamePrefix, relatedMemo.UID),
+			Uid:     relatedMemo.UID,
+			Snippet: relatedMemoSnippet,
+		},
+		Type: convertMemoRelationTypeFromStore(memoRelation.Type),
+	}, nil
 }
 
 func convertMemoRelationTypeFromStore(relationType store.MemoRelationType) v1pb.MemoRelation_Type {

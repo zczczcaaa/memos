@@ -137,10 +137,14 @@ func (s *Store) GetWorkspaceGeneralSetting(ctx context.Context) (*storepb.Worksp
 	return workspaceGeneralSetting, nil
 }
 
-const (
-	// DefaultContentLengthLimit is the default limit of content length in bytes. 8KB.
-	DefaultContentLengthLimit = 8 * 1024
-)
+// DefaultContentLengthLimit is the default limit of content length in bytes. 8KB.
+const DefaultContentLengthLimit = 8 * 1024
+
+// DefaultReactions is the default reactions for memo related setting.
+var DefaultReactions = []string{"👍", "👎", "❤️", "🎉", "😄", "😕", "😢", "😡"}
+
+// DefaultNsfwTags is the default tags that mark content as NSFW for blurring.
+var DefaultNsfwTags = []string{"nsfw"}
 
 func (s *Store) GetWorkspaceMemoRelatedSetting(ctx context.Context) (*storepb.WorkspaceMemoRelatedSetting, error) {
 	workspaceSetting, err := s.GetWorkspaceSetting(ctx, &FindWorkspaceSetting{
@@ -156,6 +160,12 @@ func (s *Store) GetWorkspaceMemoRelatedSetting(ctx context.Context) (*storepb.Wo
 	}
 	if workspaceMemoRelatedSetting.ContentLengthLimit < DefaultContentLengthLimit {
 		workspaceMemoRelatedSetting.ContentLengthLimit = DefaultContentLengthLimit
+	}
+	if len(workspaceMemoRelatedSetting.Reactions) == 0 {
+		workspaceMemoRelatedSetting.Reactions = append(workspaceMemoRelatedSetting.Reactions, DefaultReactions...)
+	}
+	if len(workspaceMemoRelatedSetting.NsfwTags) == 0 {
+		workspaceMemoRelatedSetting.NsfwTags = append(workspaceMemoRelatedSetting.NsfwTags, DefaultNsfwTags...)
 	}
 	s.workspaceSettingCache.Store(storepb.WorkspaceSettingKey_MEMO_RELATED.String(), &storepb.WorkspaceSetting{
 		Key:   storepb.WorkspaceSettingKey_MEMO_RELATED,
