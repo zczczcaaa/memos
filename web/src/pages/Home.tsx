@@ -23,6 +23,8 @@ const Home = observer(() => {
         contentSearch.push(`"${filter.value}"`);
       } else if (filter.factor === "tagSearch") {
         tagSearch.push(`"${filter.value}"`);
+      } else if (filter.factor === "pinned") {
+        conditions.push(`pinned == true`);
       } else if (filter.factor === "property.hasLink") {
         conditions.push(`has_link == true`);
       } else if (filter.factor === "property.hasTaskList") {
@@ -57,6 +59,7 @@ const Home = observer(() => {
               ? dayjs(a.displayTime).unix() - dayjs(b.displayTime).unix()
               : dayjs(b.displayTime).unix() - dayjs(a.displayTime).unix(),
           )
+          .sort((a, b) => Number(b.pinned) - Number(a.pinned))
       }
       owner={user.name}
       direction={viewStore.state.orderByTimeAsc ? Direction.ASC : Direction.DESC}
