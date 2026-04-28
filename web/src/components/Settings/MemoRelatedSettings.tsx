@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { isEqual, uniq } from "lodash-es";
 import { CheckIcon, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,6 @@ import {
 } from "@/types/proto/api/v1/instance_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import SettingGroup from "./SettingGroup";
-import SettingRow from "./SettingRow";
 import SettingSection from "./SettingSection";
 
 const MemoRelatedSettings = () => {
@@ -25,6 +24,10 @@ const MemoRelatedSettings = () => {
   const { memoRelatedSetting: originalSetting, updateSetting, fetchSetting } = useInstance();
   const [memoRelatedSetting, setMemoRelatedSetting] = useState<InstanceSetting_MemoRelatedSetting>(originalSetting);
   const [editingReaction, setEditingReaction] = useState<string>("");
+
+  useEffect(() => {
+    setMemoRelatedSetting(originalSetting);
+  }, [originalSetting]);
 
   const updatePartialSetting = (partial: Partial<InstanceSetting_MemoRelatedSetting>) => {
     const newInstanceMemoRelatedSetting = create(InstanceSetting_MemoRelatedSettingSchema, {
@@ -71,47 +74,74 @@ const MemoRelatedSettings = () => {
 
   return (
     <SettingSection title={t("setting.memo.label")}>
-      <SettingGroup title={t("common.basic")}>
-        <SettingRow label={t("setting.system.enable-double-click-to-edit")}>
-          <Switch
-            checked={memoRelatedSetting.enableDoubleClickEdit}
-            onCheckedChange={(checked) => updatePartialSetting({ enableDoubleClickEdit: checked })}
-          />
-        </SettingRow>
+      <SettingGroup title={t("setting.memo.editing-title")} description={t("setting.memo.editing-description")}>
+        <div className="overflow-hidden rounded-lg border border-border bg-background divide-y divide-border">
+          <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-foreground">{t("setting.system.enable-double-click-to-edit")}</div>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("setting.memo.double-click-edit-description")}</p>
+            </div>
+            <Switch
+              checked={memoRelatedSetting.enableDoubleClickEdit}
+              onCheckedChange={(checked) => updatePartialSetting({ enableDoubleClickEdit: checked })}
+            />
+          </div>
 
-        <SettingRow label={t("setting.memo.content-length-limit")}>
-          <Input
-            className="w-24"
-            type="number"
-            value={memoRelatedSetting.contentLengthLimit}
-            onChange={(event) => updatePartialSetting({ contentLengthLimit: Number(event.target.value) })}
-          />
-        </SettingRow>
+          <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-foreground">{t("setting.memo.content-length-limit")}</div>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("setting.memo.content-length-limit-description")}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                className="w-28 font-mono"
+                type="number"
+                min={0}
+                value={memoRelatedSetting.contentLengthLimit}
+                onChange={(event) => updatePartialSetting({ contentLengthLimit: Number(event.target.value) })}
+              />
+              <span className="text-xs text-muted-foreground">{t("setting.memo.bytes-unit")}</span>
+            </div>
+          </div>
+        </div>
       </SettingGroup>
 
-      <SettingGroup title={t("setting.memo.reactions")} showSeparator>
-        <div className="w-full flex flex-row flex-wrap gap-2">
-          {memoRelatedSetting.reactions.map((reactionType) => (
-            <Badge key={reactionType} variant="outline" className="flex items-center gap-1.5 h-8 px-3">
-              {reactionType}
-              <span
-                className="cursor-pointer text-muted-foreground hover:text-destructive"
-                onClick={() => updatePartialSetting({ reactions: memoRelatedSetting.reactions.filter((r) => r !== reactionType) })}
-              >
-                <X className="w-3.5 h-3.5" />
-              </span>
+      <SettingGroup title={t("setting.memo.reactions")} description={t("setting.memo.reactions-description")} showSeparator>
+        <div className="overflow-hidden rounded-lg border border-border bg-background">
+          <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
+            <span className="text-sm font-medium text-muted-foreground">{t("setting.memo.configured-reactions")}</span>
+            <Badge variant="outline" className="rounded-md px-2 py-0 text-xs font-normal">
+              {memoRelatedSetting.reactions.length}
             </Badge>
-          ))}
-          <div className="flex items-center gap-1.5">
+          </div>
+
+          <div className="flex min-h-16 flex-wrap gap-2 px-3 py-3">
+            {memoRelatedSetting.reactions.map((reactionType) => (
+              <Badge key={reactionType} variant="outline" className="flex h-8 items-center gap-2 rounded-md px-2.5 font-normal">
+                <span>{reactionType}</span>
+                <button
+                  type="button"
+                  className="text-muted-foreground transition-colors hover:text-destructive"
+                  onClick={() => updatePartialSetting({ reactions: memoRelatedSetting.reactions.filter((r) => r !== reactionType) })}
+                  aria-label={t("setting.memo.remove-reaction")}
+                >
+                  <X className="size-3.5" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-border bg-muted/20 px-3 py-3 sm:flex-row sm:items-center">
             <Input
-              className="w-32 h-8"
-              placeholder={t("common.input")}
+              className="h-8 max-w-48 font-mono"
+              placeholder={t("setting.memo.reaction-placeholder")}
               value={editingReaction}
               onChange={(event) => setEditingReaction(event.target.value)}
               onKeyDown={(e) => e.key === "Enter" && upsertReaction()}
             />
-            <Button variant="ghost" size="sm" onClick={upsertReaction} className="h-8 w-8 p-0">
-              <CheckIcon className="w-4 h-4" />
+            <Button variant="outline" size="sm" onClick={upsertReaction} disabled={!editingReaction.trim()}>
+              <CheckIcon className="w-4 h-4 mr-1.5" />
+              {t("setting.memo.add-reaction")}
             </Button>
           </div>
         </div>
