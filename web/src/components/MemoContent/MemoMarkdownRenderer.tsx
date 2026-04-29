@@ -16,6 +16,7 @@ import { remarkSplitMixedTaskLists } from "@/utils/remark-plugins/remark-split-m
 import { remarkTag } from "@/utils/remark-plugins/remark-tag";
 import { CodeBlock } from "./CodeBlock";
 import { SANITIZE_SCHEMA } from "./constants";
+import { MarkdownRenderContext, rootMarkdownRenderContext } from "./MarkdownRenderContext";
 import { Mention } from "./Mention";
 import { Blockquote, Heading, HorizontalRule, Image, InlineCode, Link, List, ListItem, Paragraph } from "./markdown";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "./Table";
@@ -119,21 +120,28 @@ export const MemoMarkdownRenderer = ({ content, resolvedMentionUsernames }: Memo
   };
 
   return (
-    <ReactMarkdown
-      remarkPlugins={[
-        remarkDisableSetext,
-        remarkMath,
-        remarkGfm,
-        remarkSplitMixedTaskLists,
-        remarkBreaks,
-        remarkMention,
-        remarkTag,
-        remarkPreserveType,
-      ]}
-      rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], rehypeHeadingId, [rehypeKatex, { throwOnError: false, strict: false }]]}
-      components={markdownComponents}
-    >
-      {content}
-    </ReactMarkdown>
+    <MarkdownRenderContext.Provider value={rootMarkdownRenderContext}>
+      <ReactMarkdown
+        remarkPlugins={[
+          remarkDisableSetext,
+          remarkMath,
+          remarkGfm,
+          remarkSplitMixedTaskLists,
+          remarkBreaks,
+          remarkMention,
+          remarkTag,
+          remarkPreserveType,
+        ]}
+        rehypePlugins={[
+          rehypeRaw,
+          [rehypeSanitize, SANITIZE_SCHEMA],
+          rehypeHeadingId,
+          [rehypeKatex, { throwOnError: false, strict: false }],
+        ]}
+        components={markdownComponents}
+      >
+        {content}
+      </ReactMarkdown>
+    </MarkdownRenderContext.Provider>
   );
 };

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { TASK_LIST_CLASS, TASK_LIST_ITEM_CLASS } from "../constants";
+import { NestedMarkdownRenderContext } from "../MarkdownRenderContext";
 import type { ReactMarkdownProps } from "./types";
 
 interface ListProps extends React.HTMLAttributes<HTMLUListElement | HTMLOListElement>, ReactMarkdownProps {
@@ -55,14 +56,14 @@ export const ListItem = ({ children, className, node: _node, ...domProps }: List
         )}
         {...domProps}
       >
-        {children}
+        <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
       </li>
     );
   }
 
   return (
     <li className={cn("mt-0.5 leading-6", className)} {...domProps}>
-      {children}
+      <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
     </li>
   );
 };
