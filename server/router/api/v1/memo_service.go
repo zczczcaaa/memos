@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/usememos/memos/internal/httpgetter"
 	"github.com/usememos/memos/internal/webhook"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
@@ -23,6 +24,10 @@ import (
 // suppressSSEKey is a context key used to suppress the SSE broadcast from
 // CreateMemo when it is called internally (e.g., from CreateMemoComment).
 type suppressSSEKey struct{}
+
+const maxBatchGetLinkMetadata = 10
+
+var fetchHTMLMeta = httpgetter.GetHTMLMeta
 
 func withSuppressSSE(ctx context.Context) context.Context {
 	return context.WithValue(ctx, suppressSSEKey{}, true)
@@ -380,6 +385,52 @@ func (s *APIV1Service) GetMemo(ctx context.Context, request *v1pb.GetMemoRequest
 		return nil, errors.Wrap(err, "failed to convert memo")
 	}
 	return memoMessage, nil
+}
+
+// GetLinkMetadata gets metadata for a link.
+func (*APIV1Service) GetLinkMetadata(_ context.Context, request *v1pb.GetLinkMetadataRequest) (*v1pb.LinkMetadata, error) {
+	return getLinkMetadata(request.GetUrl())
+}
+
+// BatchGetLinkMetadata gets metadata for links.
+func (*APIV1Service) BatchGetLinkMetadata(_ context.Context, request *v1pb.BatchGetLinkMetadataRequest) (*v1pb.BatchGetLinkMetadataResponse, error) {
+	if len(request.Urls) == 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "urls are required")
+	}
+	if len(request.Urls) > maxBatchGetLinkMetadata {
+		return nil, status.Errorf(codes.InvalidArgument, "too many urls (max %d)", maxBatchGetLinkMetadata)
+	}
+
+	linkMetadata := make([]*v1pb.LinkMetadata, 0, len(request.Urls))
+	for _, url := range request.Urls {
+		metadata, err := getLinkMetadata(url)
+		if err != nil {
+			return nil, err
+		}
+		linkMetadata = append(linkMetadata, metadata)
+	}
+
+	return &v1pb.BatchGetLinkMetadataResponse{
+		LinkMetadata: linkMetadata,
+	}, nil
+}
+
+func getLinkMetadata(inputURL string) (*v1pb.LinkMetadata, error) {
+	url := strings.TrimSpace(inputURL)
+	if url == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "url is required")
+	}
+	htmlMeta, err := fetchHTMLMeta(url)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "failed to fetch link metadata: %v", err)
+	}
+
+	return &v1pb.LinkMetadata{
+		Url:         inputURL,
+		Title:       htmlMeta.Title,
+		Description: htmlMeta.Description,
+		Image:       htmlMeta.Image,
+	}, nil
 }
 
 func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoRequest) (*v1pb.Memo, error) {

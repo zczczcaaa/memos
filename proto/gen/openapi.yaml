@@ -643,6 +643,56 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/memos/-/linkMetadata:
+        get:
+            tags:
+                - MemoService
+            description: GetLinkMetadata gets metadata for a link.
+            operationId: MemoService_GetLinkMetadata
+            parameters:
+                - name: url
+                  in: query
+                  description: Required. The link URL.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LinkMetadata'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/memos/-/linkMetadata:batchGet:
+        post:
+            tags:
+                - MemoService
+            description: BatchGetLinkMetadata gets metadata for links.
+            operationId: MemoService_BatchGetLinkMetadata
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/BatchGetLinkMetadataRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BatchGetLinkMetadataResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/memos/{memo}:
         get:
             tags:
@@ -2217,6 +2267,24 @@ components:
                     type: array
                     items:
                         type: string
+        BatchGetLinkMetadataRequest:
+            required:
+                - urls
+            type: object
+            properties:
+                urls:
+                    type: array
+                    items:
+                        type: string
+                    description: Required. The link URLs.
+        BatchGetLinkMetadataResponse:
+            type: object
+            properties:
+                linkMetadata:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/LinkMetadata'
+                    description: The link metadata list, in the same order as the input URLs.
         BatchGetUsersRequest:
             type: object
             properties:
@@ -2699,6 +2767,21 @@ components:
                          so a single entry like "project/.*" matches all tags under that prefix.
                          Exact tag names are also valid (they are trivially valid regex patterns).
             description: Tag metadata configuration.
+        LinkMetadata:
+            type: object
+            properties:
+                url:
+                    type: string
+                    description: The original link URL.
+                title:
+                    type: string
+                    description: The link title.
+                description:
+                    type: string
+                    description: The link description.
+                image:
+                    type: string
+                    description: The link image URL.
         LinkedIdentity:
             type: object
             properties:
