@@ -49,7 +49,7 @@ export const ListItem = ({ children, className, node: _node, ...domProps }: List
     return (
       <li
         className={cn(
-          "mt-0.5 leading-6 list-none grid grid-cols-[auto_1fr] items-center gap-x-2",
+          "mt-0.5 leading-6 list-none grid grid-cols-[auto_1fr] items-start gap-x-2 [&>[data-slot=checkbox]]:mt-1",
           "[&>ul]:col-start-2 [&>ul]:col-span-1 [&>ol]:col-start-2 [&>ol]:col-span-1",
           "[&>p:first-child]:contents [&>p:not(:first-child)]:col-start-2 [&>p:not(:first-child)]:col-span-1",
           className,
