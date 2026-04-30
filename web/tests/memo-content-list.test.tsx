@@ -34,7 +34,7 @@ describe("memo content lists", () => {
     expect(html).toContain('<li class="mt-0.5 leading-6">milk</li>');
     expect(html).not.toContain('<li class="mt-0.5 leading-6">\n<p>milk</p>');
     expect(html).toContain(TASK_LIST_ITEM_CLASS);
-    expect(html).toContain("grid grid-cols-[auto_1fr] items-center gap-x-2");
+    expect(html).toContain("grid grid-cols-[auto_1fr] items-start gap-x-2");
     expect(html).not.toMatch(/<li class="[^"]*task-list-item[^"]*"><p\b/);
   });
 
@@ -49,7 +49,7 @@ describe("memo content lists", () => {
   it("keeps nested task lists on their own row", () => {
     const html = renderListContent("- [ ] asdas\n  - [ ] zzzz");
 
-    expect(html).toContain("grid grid-cols-[auto_1fr] items-center gap-x-2");
+    expect(html).toContain("grid grid-cols-[auto_1fr] items-start gap-x-2");
     expect(html).toContain("[&amp;&gt;ul]:col-start-2");
     expect(html).not.toContain("[&amp;_ul.contains-task-list]:ml-6");
     expect(html).toContain("zzzz");
