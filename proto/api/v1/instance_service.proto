@@ -7,6 +7,7 @@ import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
 import "google/api/resource.proto";
+import "google/protobuf/empty.proto";
 import "google/protobuf/field_mask.proto";
 import "google/type/color.proto";
 
@@ -31,6 +32,14 @@ service InstanceService {
       body: "setting"
     };
     option (google.api.method_signature) = "setting,update_mask";
+  }
+
+  // Tests notification email delivery with the provided or stored SMTP settings.
+  rpc TestInstanceEmailSetting(TestInstanceEmailSettingRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/settings/notification:testEmail"
+      body: "*"
+    };
   }
 }
 
@@ -149,7 +158,7 @@ message InstanceSetting {
     // Reference: https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/
     message S3Config {
       string access_key_id = 1;
-      string access_key_secret = 2;
+      string access_key_secret = 2 [(google.api.field_behavior) = INPUT_ONLY];
       string endpoint = 3;
       string region = 4;
       string bucket = 5;
@@ -199,7 +208,7 @@ message InstanceSetting {
       string smtp_host = 2;
       int32 smtp_port = 3;
       string smtp_username = 4;
-      string smtp_password = 5;
+      string smtp_password = 5 [(google.api.field_behavior) = INPUT_ONLY];
       string from_email = 6;
       string from_name = 7;
       string reply_to = 8;
@@ -253,4 +262,13 @@ message UpdateInstanceSettingRequest {
 
   // The list of fields to update.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// Request message for TestInstanceEmailSetting method.
+message TestInstanceEmailSettingRequest {
+  // Optional. SMTP email settings to test. If omitted, the stored notification email setting is used.
+  InstanceSetting.NotificationSetting.EmailSetting email = 1 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. Recipient email address. If omitted, the current user's email address is used.
+  string recipient_email = 2 [(google.api.field_behavior) = OPTIONAL];
 }

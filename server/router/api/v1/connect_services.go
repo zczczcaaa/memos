@@ -39,6 +39,14 @@ func (s *ConnectServiceHandler) UpdateInstanceSetting(ctx context.Context, req *
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) TestInstanceEmailSetting(ctx context.Context, req *connect.Request[v1pb.TestInstanceEmailSettingRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.APIV1Service.TestInstanceEmailSetting(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // AuthService
 //
 // Auth service methods need special handling for response headers (cookies).

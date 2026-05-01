@@ -678,7 +678,7 @@ func (s *APIV1Service) CreateMemoComment(ctx context.Context, request *v1pb.Crea
 	}
 	creatorID := creator.ID
 	if memoComment.Visibility != v1pb.Visibility_PRIVATE && creatorID != relatedMemo.CreatorID {
-		if _, err := s.Store.CreateInbox(ctx, &store.Inbox{
+		if _, err := s.createInboxWithEmailNotification(ctx, &store.Inbox{
 			SenderID:   creatorID,
 			ReceiverID: relatedMemo.CreatorID,
 			Status:     store.UNREAD,

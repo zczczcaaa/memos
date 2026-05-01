@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 
 interface SettingRowProps {
-  label: string;
+  label: React.ReactNode;
   description?: string;
   tooltip?: string;
   children: React.ReactNode;
@@ -23,7 +23,7 @@ const SettingRow: React.FC<SettingRowProps> = ({ label, description, tooltip, ch
     >
       <div className={cn("flex min-w-0 flex-col gap-1", vertical ? "w-full" : "flex-1")}>
         <div className="flex items-center gap-1.5">
-          <span className={cn("text-sm", vertical ? "font-medium" : "")}>{label}</span>
+          <div className={cn("text-sm", vertical ? "font-medium" : "")}>{label}</div>
           {tooltip && (
             <TooltipProvider>
               <Tooltip>

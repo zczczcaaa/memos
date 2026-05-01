@@ -476,6 +476,28 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/instance/settings/notification:testEmail:
+        post:
+            tags:
+                - InstanceService
+            description: Tests notification email delivery with the provided or stored SMTP settings.
+            operationId: InstanceService_TestInstanceEmailSetting
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/TestInstanceEmailSettingRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/instance/{instance}/*:
         get:
             tags:
@@ -3207,6 +3229,7 @@ components:
                 smtpUsername:
                     type: string
                 smtpPassword:
+                    writeOnly: true
                     type: string
                 fromEmail:
                     type: string
@@ -3447,6 +3470,7 @@ components:
                 accessKeyId:
                     type: string
                 accessKeySecret:
+                    writeOnly: true
                     type: string
                 endpoint:
                     type: string
@@ -3459,6 +3483,17 @@ components:
             description: |-
                 S3 configuration for cloud storage backend.
                  Reference: https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/
+        TestInstanceEmailSettingRequest:
+            type: object
+            properties:
+                email:
+                    allOf:
+                        - $ref: '#/components/schemas/NotificationSetting_EmailSetting'
+                    description: Optional. SMTP email settings to test. If omitted, the stored notification email setting is used.
+                recipientEmail:
+                    type: string
+                    description: Optional. Recipient email address. If omitted, the current user's email address is used.
+            description: Request message for TestInstanceEmailSetting method.
         TranscribeRequest:
             required:
                 - providerId

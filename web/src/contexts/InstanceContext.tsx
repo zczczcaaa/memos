@@ -12,6 +12,8 @@ import {
   InstanceSetting_Key,
   InstanceSetting_MemoRelatedSetting,
   InstanceSetting_MemoRelatedSettingSchema,
+  InstanceSetting_NotificationSetting,
+  InstanceSetting_NotificationSettingSchema,
   InstanceSetting_StorageSetting,
   InstanceSetting_StorageSettingSchema,
   InstanceSetting_TagsSetting,
@@ -41,6 +43,7 @@ interface InstanceContextValue extends InstanceState {
   memoRelatedSetting: InstanceSetting_MemoRelatedSetting;
   storageSetting: InstanceSetting_StorageSetting;
   tagsSetting: InstanceSetting_TagsSetting;
+  notificationSetting: InstanceSetting_NotificationSetting;
   aiSetting: InstanceSetting_AISetting;
   initialize: () => Promise<void>;
   fetchSetting: (key: InstanceSetting_Key) => Promise<void>;
@@ -91,6 +94,14 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
       return setting.value.value;
     }
     return create(InstanceSetting_TagsSettingSchema, {});
+  }, [state.settings]);
+
+  const notificationSetting = useMemo((): InstanceSetting_NotificationSetting => {
+    const setting = state.settings.find((s) => s.name === `${instanceSettingNamePrefix}NOTIFICATION`);
+    if (setting?.value.case === "notificationSetting") {
+      return setting.value.value;
+    }
+    return create(InstanceSetting_NotificationSettingSchema, {});
   }, [state.settings]);
 
   const aiSetting = useMemo((): InstanceSetting_AISetting => {
@@ -148,10 +159,10 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateSetting = useCallback(async (setting: InstanceSetting) => {
-    await instanceServiceClient.updateInstanceSetting({ setting });
+    const updatedSetting = await instanceServiceClient.updateInstanceSetting({ setting });
     setState((prev) => ({
       ...prev,
-      settings: [...prev.settings.filter((s) => s.name !== setting.name), setting],
+      settings: [...prev.settings.filter((s) => s.name !== updatedSetting.name), updatedSetting],
     }));
   }, []);
 
@@ -163,12 +174,24 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
       memoRelatedSetting,
       storageSetting,
       tagsSetting,
+      notificationSetting,
       aiSetting,
       initialize,
       fetchSetting,
       updateSetting,
     }),
-    [state, generalSetting, memoRelatedSetting, storageSetting, tagsSetting, aiSetting, initialize, fetchSetting, updateSetting],
+    [
+      state,
+      generalSetting,
+      memoRelatedSetting,
+      storageSetting,
+      tagsSetting,
+      notificationSetting,
+      aiSetting,
+      initialize,
+      fetchSetting,
+      updateSetting,
+    ],
   );
 
   return <InstanceContext.Provider value={value}>{children}</InstanceContext.Provider>;

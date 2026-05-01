@@ -12,9 +12,11 @@ import (
 	colorpb "google.golang.org/genproto/googleapis/type/color"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
+	"github.com/usememos/memos/server/notification"
 	"github.com/usememos/memos/store"
 )
 
@@ -130,6 +132,9 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 		if notif := updateSetting.GetNotificationSetting(); notif != nil && notif.Email != nil && notif.Email.SmtpPassword == "" {
 			existing, err := s.Store.GetInstanceNotificationSetting(ctx)
 			if err == nil && existing != nil && existing.Email != nil {
+				if existing.Email.SmtpPassword != "" && !sameSMTPConnectionIdentity(notif.Email, existing.Email) {
+					return nil, status.Errorf(codes.InvalidArgument, "smtp password is required when changing SMTP host, port, username, or encryption settings")
+				}
 				notif.Email.SmtpPassword = existing.Email.SmtpPassword
 			}
 		}
@@ -154,6 +159,82 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 	}
 
 	return convertInstanceSettingFromStore(instanceSetting), nil
+}
+
+func (s *APIV1Service) TestInstanceEmailSetting(ctx context.Context, request *v1pb.TestInstanceEmailSettingRequest) (*emptypb.Empty, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+	if user.Role != store.RoleAdmin {
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	}
+
+	emailSetting, err := s.resolveTestEmailSetting(ctx, request.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	recipientEmail := strings.TrimSpace(request.RecipientEmail)
+	if recipientEmail == "" {
+		recipientEmail = strings.TrimSpace(user.Email)
+	}
+	if recipientEmail == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "recipient email is required")
+	}
+
+	if err := notification.ValidateEmailSetting(emailSetting); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid notification email setting: %v", err)
+	}
+
+	if err := notification.SendTestEmail(emailSetting, recipientEmail); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to send test email: %v. Check that the SMTP port matches encryption: Gmail uses port 587 with STARTTLS on and SSL/TLS off; port 465 requires SSL/TLS on", err)
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *APIV1Service) resolveTestEmailSetting(ctx context.Context, requestEmail *v1pb.InstanceSetting_NotificationSetting_EmailSetting) (*storepb.InstanceNotificationSetting_EmailSetting, error) {
+	if requestEmail == nil {
+		existing, err := s.Store.GetInstanceNotificationSetting(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get notification setting: %v", err)
+		}
+		return existing.GetEmail(), nil
+	}
+
+	emailSetting := convertInstanceNotificationSettingToStore(&v1pb.InstanceSetting_NotificationSetting{Email: requestEmail}).GetEmail()
+	if emailSetting.SmtpPassword != "" {
+		return emailSetting, nil
+	}
+
+	existing, err := s.Store.GetInstanceNotificationSetting(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get notification setting: %v", err)
+	}
+	existingEmail := existing.GetEmail()
+	if existingEmail == nil || existingEmail.SmtpPassword == "" {
+		return emailSetting, nil
+	}
+	if sameSMTPConnectionIdentity(emailSetting, existingEmail) {
+		emailSetting.SmtpPassword = existingEmail.SmtpPassword
+		return emailSetting, nil
+	}
+	return nil, status.Errorf(codes.InvalidArgument, "smtp password is required when changing SMTP host, port, username, or encryption settings")
+}
+
+func sameSMTPConnectionIdentity(setting, existing *storepb.InstanceNotificationSetting_EmailSetting) bool {
+	if setting == nil || existing == nil {
+		return false
+	}
+	return strings.TrimSpace(setting.SmtpHost) == strings.TrimSpace(existing.SmtpHost) &&
+		setting.SmtpPort == existing.SmtpPort &&
+		strings.TrimSpace(setting.SmtpUsername) == strings.TrimSpace(existing.SmtpUsername) &&
+		setting.UseTls == existing.UseTls &&
+		setting.UseSsl == existing.UseSsl
 }
 
 func convertInstanceSettingFromStore(setting *storepb.InstanceSetting) *v1pb.InstanceSetting {

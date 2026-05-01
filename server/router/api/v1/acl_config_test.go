@@ -46,6 +46,7 @@ func TestProtectedMethodsRequireAuth(t *testing.T) {
 		"/memos.api.v1.AuthService/GetCurrentUser",
 		// Instance Service - admin operations
 		"/memos.api.v1.InstanceService/UpdateInstanceSetting",
+		"/memos.api.v1.InstanceService/TestInstanceEmailSetting",
 		// User Service - modification operations
 		"/memos.api.v1.UserService/ListUsers",
 		"/memos.api.v1.UserService/UpdateUser",

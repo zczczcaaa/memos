@@ -5,6 +5,7 @@ import {
   KeyIcon,
   LibraryIcon,
   type LucideIcon,
+  MailIcon,
   Settings2Icon,
   TagsIcon,
   UserIcon,
@@ -17,6 +18,7 @@ import InstanceSection from "@/components/Settings/InstanceSection";
 import MemberSection from "@/components/Settings/MemberSection";
 import MemoRelatedSettings from "@/components/Settings/MemoRelatedSettings";
 import MyAccountSection from "@/components/Settings/MyAccountSection";
+import NotificationSection from "@/components/Settings/NotificationSection";
 import PreferencesSection from "@/components/Settings/PreferencesSection";
 import SSOSection from "@/components/Settings/SSOSection";
 import StorageSection from "@/components/Settings/StorageSection";
@@ -24,7 +26,18 @@ import TagsSection from "@/components/Settings/TagsSection";
 import WebhookSection from "@/components/Settings/WebhookSection";
 import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
 
-export type SettingSectionKey = "my-account" | "preference" | "webhook" | "member" | "system" | "memo" | "storage" | "sso" | "tags" | "ai";
+export type SettingSectionKey =
+  | "my-account"
+  | "preference"
+  | "webhook"
+  | "member"
+  | "system"
+  | "memo"
+  | "storage"
+  | "notification"
+  | "sso"
+  | "tags"
+  | "ai";
 
 type SettingSectionScope = "basic" | "admin";
 
@@ -95,6 +108,14 @@ export const SETTINGS_SECTIONS: SettingSectionDefinition[] = [
     icon: DatabaseIcon,
     component: StorageSection,
     preloadSettingKeys: [InstanceSetting_Key.STORAGE],
+  },
+  {
+    key: "notification",
+    scope: "admin",
+    labelKey: "setting.notification.label",
+    icon: MailIcon,
+    component: NotificationSection,
+    preloadSettingKeys: [InstanceSetting_Key.NOTIFICATION],
   },
   {
     key: "sso",

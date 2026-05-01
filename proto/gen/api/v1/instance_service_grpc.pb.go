@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -19,9 +20,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	InstanceService_GetInstanceProfile_FullMethodName    = "/memos.api.v1.InstanceService/GetInstanceProfile"
-	InstanceService_GetInstanceSetting_FullMethodName    = "/memos.api.v1.InstanceService/GetInstanceSetting"
-	InstanceService_UpdateInstanceSetting_FullMethodName = "/memos.api.v1.InstanceService/UpdateInstanceSetting"
+	InstanceService_GetInstanceProfile_FullMethodName       = "/memos.api.v1.InstanceService/GetInstanceProfile"
+	InstanceService_GetInstanceSetting_FullMethodName       = "/memos.api.v1.InstanceService/GetInstanceSetting"
+	InstanceService_UpdateInstanceSetting_FullMethodName    = "/memos.api.v1.InstanceService/UpdateInstanceSetting"
+	InstanceService_TestInstanceEmailSetting_FullMethodName = "/memos.api.v1.InstanceService/TestInstanceEmailSetting"
 )
 
 // InstanceServiceClient is the client API for InstanceService service.
@@ -34,6 +36,8 @@ type InstanceServiceClient interface {
 	GetInstanceSetting(ctx context.Context, in *GetInstanceSettingRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
 	// Updates an instance setting.
 	UpdateInstanceSetting(ctx context.Context, in *UpdateInstanceSettingRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
+	// Tests notification email delivery with the provided or stored SMTP settings.
+	TestInstanceEmailSetting(ctx context.Context, in *TestInstanceEmailSettingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type instanceServiceClient struct {
@@ -74,6 +78,16 @@ func (c *instanceServiceClient) UpdateInstanceSetting(ctx context.Context, in *U
 	return out, nil
 }
 
+func (c *instanceServiceClient) TestInstanceEmailSetting(ctx context.Context, in *TestInstanceEmailSettingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, InstanceService_TestInstanceEmailSetting_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // InstanceServiceServer is the server API for InstanceService service.
 // All implementations must embed UnimplementedInstanceServiceServer
 // for forward compatibility.
@@ -84,6 +98,8 @@ type InstanceServiceServer interface {
 	GetInstanceSetting(context.Context, *GetInstanceSettingRequest) (*InstanceSetting, error)
 	// Updates an instance setting.
 	UpdateInstanceSetting(context.Context, *UpdateInstanceSettingRequest) (*InstanceSetting, error)
+	// Tests notification email delivery with the provided or stored SMTP settings.
+	TestInstanceEmailSetting(context.Context, *TestInstanceEmailSettingRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedInstanceServiceServer()
 }
 
@@ -102,6 +118,9 @@ func (UnimplementedInstanceServiceServer) GetInstanceSetting(context.Context, *G
 }
 func (UnimplementedInstanceServiceServer) UpdateInstanceSetting(context.Context, *UpdateInstanceSettingRequest) (*InstanceSetting, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateInstanceSetting not implemented")
+}
+func (UnimplementedInstanceServiceServer) TestInstanceEmailSetting(context.Context, *TestInstanceEmailSettingRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method TestInstanceEmailSetting not implemented")
 }
 func (UnimplementedInstanceServiceServer) mustEmbedUnimplementedInstanceServiceServer() {}
 func (UnimplementedInstanceServiceServer) testEmbeddedByValue()                         {}
@@ -178,6 +197,24 @@ func _InstanceService_UpdateInstanceSetting_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _InstanceService_TestInstanceEmailSetting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TestInstanceEmailSettingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).TestInstanceEmailSetting(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_TestInstanceEmailSetting_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).TestInstanceEmailSetting(ctx, req.(*TestInstanceEmailSettingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // InstanceService_ServiceDesc is the grpc.ServiceDesc for InstanceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -196,6 +233,10 @@ var InstanceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateInstanceSetting",
 			Handler:    _InstanceService_UpdateInstanceSetting_Handler,
+		},
+		{
+			MethodName: "TestInstanceEmailSetting",
+			Handler:    _InstanceService_TestInstanceEmailSetting_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
