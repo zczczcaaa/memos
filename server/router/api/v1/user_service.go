@@ -381,8 +381,15 @@ func (s *APIV1Service) DeleteUser(ctx context.Context, request *v1pb.DeleteUserR
 	}
 	var attachmentCleanupErr error
 	failedAttachmentIDs := make([]int32, 0)
+	attachmentStorageSetting, attachmentStorageSettingErr := getDeleteUserAttachmentStorageSetting(ctx, s.Store, attachments)
 	for _, attachment := range attachments {
-		if err := s.Store.DeleteAttachmentStorage(ctx, attachment); err != nil {
+		var err error
+		if attachmentStorageSettingErr != nil && store.AttachmentNeedsInstanceStorageSetting(attachment) {
+			err = attachmentStorageSettingErr
+		} else {
+			err = s.Store.DeleteAttachmentStorageWithInstanceSetting(ctx, attachment, attachmentStorageSetting)
+		}
+		if err != nil {
 			slog.Warn("failed to delete attachment storage after deleting user", "user_id", userID, "attachment_id", attachment.ID, "error", err)
 			failedAttachmentIDs = append(failedAttachmentIDs, attachment.ID)
 			if attachmentCleanupErr == nil {
@@ -406,6 +413,19 @@ func (s *APIV1Service) DeleteUser(ctx context.Context, request *v1pb.DeleteUserR
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func getDeleteUserAttachmentStorageSetting(ctx context.Context, stores *store.Store, attachments []*store.Attachment) (*storepb.InstanceStorageSetting, error) {
+	for _, attachment := range attachments {
+		if store.AttachmentNeedsInstanceStorageSetting(attachment) {
+			instanceStorageSetting, err := stores.GetInstanceStorageSetting(ctx)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get instance storage setting")
+			}
+			return instanceStorageSetting, nil
+		}
+	}
+	return nil, nil
 }
 
 func getDefaultUserGeneralSetting() *v1pb.UserSetting_GeneralSetting {
