@@ -177,7 +177,7 @@ func (s *Store) DeleteAttachments(ctx context.Context, attachments []*Attachment
 		if instanceStorageSettingErr != nil && AttachmentNeedsInstanceStorageSetting(attachment) {
 			err = instanceStorageSettingErr
 		} else {
-			err = s.deleteAttachmentStorage(ctx, attachment, instanceStorageSetting)
+			err = s.deleteAttachmentStorageImpl(ctx, attachment, instanceStorageSetting)
 		}
 		if err != nil {
 			if attachment.StorageType == storepb.AttachmentStorageType_LOCAL {
@@ -191,15 +191,15 @@ func (s *Store) DeleteAttachments(ctx context.Context, attachments []*Attachment
 }
 
 func (s *Store) DeleteAttachmentStorage(ctx context.Context, attachment *Attachment) error {
-	return s.deleteAttachmentStorage(ctx, attachment, nil)
+	return s.deleteAttachmentStorageImpl(ctx, attachment, nil)
 }
 
 // DeleteAttachmentStorageWithInstanceSetting deletes attachment storage using a preloaded instance storage setting.
 func (s *Store) DeleteAttachmentStorageWithInstanceSetting(ctx context.Context, attachment *Attachment, instanceStorageSetting *storepb.InstanceStorageSetting) error {
-	return s.deleteAttachmentStorage(ctx, attachment, instanceStorageSetting)
+	return s.deleteAttachmentStorageImpl(ctx, attachment, instanceStorageSetting)
 }
 
-func (s *Store) deleteAttachmentStorage(ctx context.Context, attachment *Attachment, instanceStorageSetting *storepb.InstanceStorageSetting) error {
+func (s *Store) deleteAttachmentStorageImpl(ctx context.Context, attachment *Attachment, instanceStorageSetting *storepb.InstanceStorageSetting) error {
 	if attachment == nil {
 		return nil
 	}

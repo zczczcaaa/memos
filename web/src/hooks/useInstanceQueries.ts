@@ -8,6 +8,7 @@ export const instanceKeys = {
   profile: () => [...instanceKeys.all, "profile"] as const,
   settings: () => [...instanceKeys.all, "settings"] as const,
   setting: (key: InstanceSetting_Key) => [...instanceKeys.settings(), key] as const,
+  stats: () => [...instanceKeys.all, "stats"] as const,
 };
 
 // Build setting name from key
@@ -15,6 +16,15 @@ const buildInstanceSettingName = (key: InstanceSetting_Key): string => {
   const keyName = InstanceSetting_Key[key];
   return `instance/settings/${keyName}`;
 };
+
+// Hook to fetch instance resource statistics. Admin only on the server side.
+export function useInstanceStats() {
+  return useQuery({
+    queryKey: instanceKeys.stats(),
+    queryFn: () => instanceServiceClient.getInstanceStats({}),
+    staleTime: 60_000, // 60s — matches server-side cache TTL
+  });
+}
 
 // Hook to fetch instance profile
 export function useInstanceProfile() {

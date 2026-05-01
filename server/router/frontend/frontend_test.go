@@ -72,7 +72,7 @@ func TestFrontendService_SitemapXML(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Header().Get("Content-Type"), "application/xml")
-	require.Contains(t, rec.Body.String(), `<loc>https://demo.usememos.com/m/publicmemo</loc>`)
+	require.Contains(t, rec.Body.String(), `<loc>https://demo.usememos.com/memos/publicmemo</loc>`)
 	require.NotContains(t, rec.Body.String(), "privatememo")
 }
 
