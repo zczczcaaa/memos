@@ -100,6 +100,7 @@ func (s *APIV1Service) ListAllUserStats(ctx context.Context, _ *v1pb.ListAllUser
 					Name:                  "",
 					TagCount:              make(map[string]int32),
 					MemoCreatedTimestamps: []*timestamppb.Timestamp{},
+					MemoUpdatedTimestamps: []*timestamppb.Timestamp{},
 					PinnedMemos:           []string{},
 					MemoTypeStats: &v1pb.UserStats_MemoTypeStats{
 						LinkCount: 0,
@@ -113,6 +114,7 @@ func (s *APIV1Service) ListAllUserStats(ctx context.Context, _ *v1pb.ListAllUser
 			stats := userMemoStatMap[memo.CreatorID]
 
 			stats.MemoCreatedTimestamps = append(stats.MemoCreatedTimestamps, timestamppb.New(time.Unix(memo.CreatedTs, 0)))
+			stats.MemoUpdatedTimestamps = append(stats.MemoUpdatedTimestamps, timestamppb.New(time.Unix(memo.UpdatedTs, 0)))
 
 			// Count memo stats
 			stats.TotalMemoCount++
@@ -205,6 +207,7 @@ func (s *APIV1Service) GetUserStats(ctx context.Context, request *v1pb.GetUserSt
 	}
 
 	createdTimestamps := []*timestamppb.Timestamp{}
+	updatedTimestamps := []*timestamppb.Timestamp{}
 	tagCount := make(map[string]int32)
 	linkCount := int32(0)
 	codeCount := int32(0)
@@ -231,6 +234,7 @@ func (s *APIV1Service) GetUserStats(ctx context.Context, request *v1pb.GetUserSt
 
 		for _, memo := range memos {
 			createdTimestamps = append(createdTimestamps, timestamppb.New(time.Unix(memo.CreatedTs, 0)))
+			updatedTimestamps = append(updatedTimestamps, timestamppb.New(time.Unix(memo.UpdatedTs, 0)))
 			// Count different memo types based on content.
 			if memo.Payload != nil {
 				for _, tag := range memo.Payload.Tags {
@@ -262,6 +266,7 @@ func (s *APIV1Service) GetUserStats(ctx context.Context, request *v1pb.GetUserSt
 	userStats := &v1pb.UserStats{
 		Name:                  fmt.Sprintf("%s/stats", BuildUserName(user.Username)),
 		MemoCreatedTimestamps: createdTimestamps,
+		MemoUpdatedTimestamps: updatedTimestamps,
 		TagCount:              tagCount,
 		PinnedMemos:           pinnedMemos,
 		TotalMemoCount:        totalMemoCount,
