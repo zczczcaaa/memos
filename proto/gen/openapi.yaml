@@ -498,6 +498,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/instance/stats:
+        get:
+            tags:
+                - InstanceService
+            description: GetInstanceStats returns resource usage statistics for the instance. Admin only.
+            operationId: InstanceService_GetInstanceStats
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/InstanceStats'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/instance/{instance}/*:
         get:
             tags:
@@ -2789,6 +2808,29 @@ components:
                          so a single entry like "project/.*" matches all tags under that prefix.
                          Exact tag names are also valid (they are trivially valid regex patterns).
             description: Tag metadata configuration.
+        InstanceStats:
+            type: object
+            properties:
+                database:
+                    $ref: '#/components/schemas/InstanceStats_DatabaseStats'
+                localStorageBytes:
+                    type: string
+                    description: Recursive size of the data directory in bytes. -1 if unavailable.
+                generatedTime:
+                    type: string
+                    description: Server-side timestamp when the snapshot was generated.
+                    format: date-time
+            description: Resource usage statistics for the instance.
+        InstanceStats_DatabaseStats:
+            type: object
+            properties:
+                driver:
+                    type: string
+                    description: driver is one of "sqlite", "mysql", "postgres".
+                sizeBytes:
+                    type: string
+                    description: size_bytes is the database size in bytes; -1 if unavailable.
+            description: Database size statistics.
         LinkMetadata:
             type: object
             properties:

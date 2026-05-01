@@ -42,6 +42,9 @@ type APIV1Service struct {
 	// thumbnailSemaphore limits concurrent thumbnail generation to prevent memory exhaustion
 	thumbnailSemaphore       *semaphore.Weighted
 	imageProcessingSemaphore *semaphore.Weighted
+
+	// instanceStatsCache memoizes GetInstanceStats results for instanceStatsCacheTTL.
+	instanceStatsCache instanceStatsCache
 }
 
 func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store) *APIV1Service {
