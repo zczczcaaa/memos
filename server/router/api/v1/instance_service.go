@@ -20,6 +20,12 @@ import (
 	"github.com/usememos/memos/store"
 )
 
+const (
+	maxTranscriptionConfigModelLength    = 256
+	maxTranscriptionConfigLanguageLength = 32
+	maxTranscriptionConfigPromptLength   = 4096
+)
+
 // GetInstanceProfile returns the instance profile.
 func (s *APIV1Service) GetInstanceProfile(ctx context.Context, _ *v1pb.GetInstanceProfileRequest) (*v1pb.InstanceProfile, error) {
 	admin, err := s.GetInstanceAdmin(ctx)
@@ -91,6 +97,7 @@ func (s *APIV1Service) GetInstanceSetting(ctx context.Context, request *v1pb.Get
 			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 		}
 	}
+	isAdminCaller := false
 	if instanceSetting.Key == storepb.InstanceSettingKey_AI {
 		user, err := s.fetchCurrentUser(ctx)
 		if err != nil {
@@ -99,9 +106,22 @@ func (s *APIV1Service) GetInstanceSetting(ctx context.Context, request *v1pb.Get
 		if user == nil {
 			return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
 		}
+		isAdminCaller = user.Role == store.RoleAdmin
 	}
 
-	return convertInstanceSettingFromStore(instanceSetting), nil
+	result := convertInstanceSettingFromStore(instanceSetting)
+	if instanceSetting.Key == storepb.InstanceSettingKey_AI && !isAdminCaller {
+		// Non-admin callers only need transcription.provider_id to gate the
+		// editor's Transcribe button. Model / language / prompt are
+		// admin-entered defaults that may contain proprietary glossary terms,
+		// so they are redacted from non-admin responses.
+		if ai := result.GetAiSetting(); ai != nil && ai.Transcription != nil {
+			ai.Transcription.Model = ""
+			ai.Transcription.Language = ""
+			ai.Transcription.Prompt = ""
+		}
+	}
+	return result, nil
 }
 
 func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.UpdateInstanceSettingRequest) (*v1pb.InstanceSetting, error) {
@@ -508,7 +528,8 @@ func convertInstanceAISettingFromStore(setting *storepb.InstanceAISetting) *v1pb
 	}
 
 	aiSetting := &v1pb.InstanceSetting_AISetting{
-		Providers: make([]*v1pb.InstanceSetting_AIProviderConfig, 0, len(setting.Providers)),
+		Providers:     make([]*v1pb.InstanceSetting_AIProviderConfig, 0, len(setting.Providers)),
+		Transcription: convertTranscriptionConfigFromStore(setting.GetTranscription()),
 	}
 	for _, provider := range setting.Providers {
 		if provider == nil {
@@ -533,7 +554,8 @@ func convertInstanceAISettingToStore(setting *v1pb.InstanceSetting_AISetting) *s
 	}
 
 	aiSetting := &storepb.InstanceAISetting{
-		Providers: make([]*storepb.AIProviderConfig, 0, len(setting.Providers)),
+		Providers:     make([]*storepb.AIProviderConfig, 0, len(setting.Providers)),
+		Transcription: convertTranscriptionConfigToStore(setting.GetTranscription()),
 	}
 	for _, provider := range setting.Providers {
 		if provider == nil {
@@ -548,6 +570,30 @@ func convertInstanceAISettingToStore(setting *v1pb.InstanceSetting_AISetting) *s
 		})
 	}
 	return aiSetting
+}
+
+func convertTranscriptionConfigFromStore(setting *storepb.TranscriptionConfig) *v1pb.InstanceSetting_TranscriptionConfig {
+	if setting == nil {
+		return nil
+	}
+	return &v1pb.InstanceSetting_TranscriptionConfig{
+		ProviderId: setting.GetProviderId(),
+		Model:      setting.GetModel(),
+		Language:   setting.GetLanguage(),
+		Prompt:     setting.GetPrompt(),
+	}
+}
+
+func convertTranscriptionConfigToStore(setting *v1pb.InstanceSetting_TranscriptionConfig) *storepb.TranscriptionConfig {
+	if setting == nil {
+		return nil
+	}
+	return &storepb.TranscriptionConfig{
+		ProviderId: setting.GetProviderId(),
+		Model:      setting.GetModel(),
+		Language:   setting.GetLanguage(),
+		Prompt:     setting.GetPrompt(),
+	}
 }
 
 func validateInstanceSetting(setting *v1pb.InstanceSetting) error {
@@ -618,6 +664,53 @@ func (s *APIV1Service) prepareInstanceAISettingForUpdate(ctx context.Context, se
 		if provider.ApiKey == "" {
 			return errors.Errorf("provider %q API key is required", provider.Id)
 		}
+	}
+
+	if err := preparePersistedTranscriptionConfig(setting, existing); err != nil {
+		return err
+	}
+	return nil
+}
+
+func preparePersistedTranscriptionConfig(setting *storepb.InstanceAISetting, existing *storepb.InstanceAISetting) error {
+	// Preserve the previously stored transcription config when the request omits it,
+	// matching the same "absence == keep" semantics used for API keys. The preserved
+	// config still falls through to validation below, so a stale provider_id is
+	// rejected if the same update removed or renamed its referenced provider.
+	if setting.Transcription == nil && existing != nil {
+		setting.Transcription = existing.GetTranscription()
+	}
+	if setting.Transcription == nil {
+		return nil
+	}
+
+	cfg := setting.Transcription
+	cfg.ProviderId = strings.TrimSpace(cfg.ProviderId)
+	cfg.Model = strings.TrimSpace(cfg.Model)
+	cfg.Language = strings.TrimSpace(cfg.Language)
+	cfg.Prompt = strings.TrimSpace(cfg.Prompt)
+
+	if cfg.ProviderId != "" {
+		referenced := false
+		for _, provider := range setting.Providers {
+			if provider != nil && provider.Id == cfg.ProviderId {
+				referenced = true
+				break
+			}
+		}
+		if !referenced {
+			return errors.Errorf("transcription provider_id %q does not reference any configured provider", cfg.ProviderId)
+		}
+	}
+
+	if len(cfg.Model) > maxTranscriptionConfigModelLength {
+		return errors.Errorf("transcription model is too long; maximum length is %d characters", maxTranscriptionConfigModelLength)
+	}
+	if len(cfg.Language) > maxTranscriptionConfigLanguageLength {
+		return errors.Errorf("transcription language is too long; maximum length is %d characters", maxTranscriptionConfigLanguageLength)
+	}
+	if len(cfg.Prompt) > maxTranscriptionConfigPromptLength {
+		return errors.Errorf("transcription prompt is too long; maximum length is %d characters", maxTranscriptionConfigPromptLength)
 	}
 	return nil
 }
