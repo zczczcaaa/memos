@@ -4,6 +4,7 @@ go 1.26.2
 
 require (
 	connectrpc.com/connect v1.19.2
+	github.com/at-wat/ebml-go v0.18.0
 	github.com/aws/aws-sdk-go-v2 v1.41.6
 	github.com/aws/aws-sdk-go-v2/config v1.32.16
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.15
@@ -20,6 +21,7 @@ require (
 	github.com/mark3labs/mcp-go v0.49.0
 	github.com/moby/moby/api v1.54.2
 	github.com/openai/openai-go/v3 v3.32.0
+	github.com/pion/opus v0.0.0-20260430223319-81a9c5dc5013
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
